@@ -33,6 +33,13 @@ function UpdateBalances() {
     );
   };
 
+  const formatBalanceForDisplay = (balance) => {
+    if (balance === null || balance === undefined || balance === '') {
+      return '';
+    }
+    return parseFloat(balance).toFixed(2);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setMessage('');
@@ -132,7 +139,8 @@ function UpdateBalances() {
                     <input
                       type="number"
                       min="0"
-                      value={unit.current_balance || ''}
+                      step="0.01"
+                      value={formatBalanceForDisplay(unit.current_balance)}
                       onChange={(e) => handleBalanceChange(unit.id, e.target.value)}
                       placeholder="0.00"
                       className="input-field pl-8"
