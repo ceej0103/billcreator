@@ -131,8 +131,8 @@ function UpdateBalances() {
                     <span className="absolute left-3 top-2 text-gray-500">$</span>
                     <input
                       type="number"
-                      step="0.01"
-                      value={(unit.current_balance || 0).toFixed(2)}
+                      min="0"
+                      value={unit.current_balance || ''}
                       onChange={(e) => handleBalanceChange(unit.id, e.target.value)}
                       placeholder="0.00"
                       className="input-field pl-8"
