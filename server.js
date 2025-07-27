@@ -59,7 +59,7 @@ app.post('/api/login', (req, res) => {
 });
 
 // Database setup
-const db = new sqlite3.Database('./bills.db');
+const db = new sqlite3.Database('/data/bills.db');
 
 // Initialize database tables
 db.serialize(() => {
