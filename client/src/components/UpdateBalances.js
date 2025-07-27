@@ -17,11 +17,11 @@ function UpdateBalances() {
     try {
       const response = await axios.get('/api/units');
       setUnits(response.data);
-      // Initialize balances state
+      // Initialize balances state with empty values
       const initialBalances = {};
       response.data.forEach(unit => {
         if (unit.tenant_id) {
-          initialBalances[unit.tenant_id] = unit.current_balance || '';
+          initialBalances[unit.tenant_id] = '';
         }
       });
       setBalances(initialBalances);
