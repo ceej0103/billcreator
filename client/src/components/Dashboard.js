@@ -122,7 +122,7 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="card">
+        <div className="card w-auto">
           <div className="flex items-center">
             <div className="p-3 bg-purple-100 rounded-lg">
               <DollarSign className="w-6 h-6 text-purple-600" />
