@@ -7,6 +7,7 @@ function UpdateBalances() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [balances, setBalances] = useState({});
 
   useEffect(() => {
     fetchUnits();
@@ -16,6 +17,14 @@ function UpdateBalances() {
     try {
       const response = await axios.get('/api/units');
       setUnits(response.data);
+      // Initialize balances state
+      const initialBalances = {};
+      response.data.forEach(unit => {
+        if (unit.tenant_id) {
+          initialBalances[unit.tenant_id] = unit.current_balance || '';
+        }
+      });
+      setBalances(initialBalances);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching units:', error);
@@ -23,38 +32,27 @@ function UpdateBalances() {
     }
   };
 
-  const handleBalanceChange = (unitId, balance) => {
-    setUnits(prevUnits =>
-      prevUnits.map(unit =>
-        unit.id === unitId
-          ? { ...unit, current_balance: parseFloat(balance) || 0 }
-          : unit
-      )
-    );
-  };
-
-  const formatBalanceForDisplay = (balance) => {
-    if (balance === null || balance === undefined || balance === '') {
-      return '';
-    }
-    return parseFloat(balance).toFixed(2);
+  const handleBalanceChange = (tenantId, value) => {
+    setBalances(prev => ({
+      ...prev,
+      [tenantId]: value
+    }));
   };
 
   const handleSave = async () => {
     setSaving(true);
     setMessage('');
-
     try {
-      const promises = units
-        .filter(unit => unit.tenant_id) // Only save for units with tenants
-        .map(unit =>
-          axios.put(`/api/balances/${unit.tenant_id}`, {
-            balance: unit.current_balance || 0
+      const promises = Object.entries(balances)
+        .filter(([tenantId, value]) => value !== '' && !isNaN(parseFloat(value)))
+        .map(([tenantId, value]) =>
+          axios.put(`/api/balances/${tenantId}`, {
+            balance: parseFloat(value)
           })
         );
-
       await Promise.all(promises);
       setMessage('Balances updated successfully!');
+      fetchUnits(); // Refresh to get updated balances
       setSaving(false);
     } catch (error) {
       console.error('Error updating balances:', error);
@@ -105,8 +103,8 @@ function UpdateBalances() {
 
       {message && (
         <div className={`p-4 rounded-lg ${
-          message.includes('Error') 
-            ? 'bg-red-100 text-red-700' 
+          message.includes('Error')
+            ? 'bg-red-100 text-red-700'
             : 'bg-green-100 text-green-700'
         }`}>
           {message}
@@ -131,21 +129,30 @@ function UpdateBalances() {
                   <p className="text-sm text-gray-600 mb-3">
                     Tenant: {unit.name || 'No tenant assigned'}
                   </p>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Current Balance
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2 text-gray-500">$</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formatBalanceForDisplay(unit.current_balance)}
-                      onChange={(e) => handleBalanceChange(unit.id, e.target.value)}
-                      placeholder="0.00"
-                      className="input-field pl-8"
-                      disabled={!unit.tenant_id}
-                    />
+                  {unit.tenant_id && (
+                    <div className="mb-3">
+                      <p className="text-sm text-gray-600">
+                        Current Balance: <span className="font-medium">${(unit.current_balance || 0).toFixed(2)}</span>
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Enter New Balance
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2 text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={unit.tenant_id ? (balances[unit.tenant_id] ?? '') : ''}
+                        onChange={e => handleBalanceChange(unit.tenant_id, e.target.value)}
+                        placeholder="0.00"
+                        className="input-field pl-8 placeholder-gray-400"
+                        disabled={!unit.tenant_id}
+                      />
+                    </div>
                   </div>
                   {!unit.tenant_id && (
                     <p className="text-xs text-gray-500 mt-1">
