@@ -35,10 +35,17 @@ function App() {
     setAuthChecked(true);
   }, [token]);
 
-  if (!token && authChecked) {
+  // 1. Don't render anything until auth check is complete
+  if (!authChecked) {
+    return <div>Loading...</div>;
+  }
+
+  // 2. If no token, show login
+  if (!token) {
     return <Login onLoginSuccess={setToken} />;
   }
 
+  // 3. Only render the app if authenticated
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <div className="min-h-screen bg-gray-50 flex">
