@@ -10,6 +10,18 @@ import CreateBills from './components/CreateBills';
 import Login from './components/Login';
 import axios from 'axios';
 
+// Add this after importing axios
+axios.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('token');
+      window.location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
+
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [authChecked, setAuthChecked] = useState(false);
