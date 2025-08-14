@@ -15,7 +15,6 @@ function UpdateTenants() {
   const fetchUnits = async () => {
     try {
       const response = await axios.get('/api/units');
-      console.log('Units data received:', response.data);
       setUnits(response.data);
       setLoading(false);
     } catch (error) {
@@ -63,7 +62,6 @@ function UpdateTenants() {
       }
       grouped[unit.property].push(unit);
     });
-    console.log('Grouped units:', grouped);
     return grouped;
   };
 
