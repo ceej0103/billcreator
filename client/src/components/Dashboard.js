@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, DollarSign, Settings, FileText, CreditCard, Building } from 'lucide-react';
+import { Users, DollarSign, Settings, FileText, CreditCard, Building, Download } from 'lucide-react';
 import axios from 'axios';
 
 function Dashboard() {
@@ -86,6 +86,13 @@ function Dashboard() {
       icon: FileText,
       link: '/bills',
       color: 'bg-red-500'
+    },
+    {
+      title: 'Auto Data Fetch',
+      description: 'Automatically fetch and process usage data',
+      icon: Download,
+      link: '/auto-fetch',
+      color: 'bg-indigo-500'
     }
   ];
 
@@ -139,7 +146,7 @@ function Dashboard() {
 
       {/* Quick Actions */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions ({quickActions.length} total)</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {quickActions.map((action, index) => (
             <Link
