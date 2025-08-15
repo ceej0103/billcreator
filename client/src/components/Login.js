@@ -15,6 +15,11 @@ export default function Login({ onLoginSuccess }) {
       const res = await axios.post('/api/login', { username, password });
       localStorage.setItem('token', res.data.token);
       onLoginSuccess(res.data.token);
+      // Clear any previous errors and ensure we're on the root path
+      setError('');
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+      }
     } catch (err) {
       setError('Invalid username or password');
     } finally {

@@ -17,6 +17,106 @@ const AUTH_USER = 'GDP';
 const AUTH_PASS_HASH = '$2b$10$eo0OFQFJm.f8XdC3xrqK5ehqqWd4NGEVE8nWCTlhS0CKSDrkASzLy';
 const JWT_SECRET = 'supersecretkey';
 
+// Logging functionality
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir);
+}
+
+function logMessage(message) {
+  const today = new Date().toISOString().split('T')[0];
+  const logFile = path.join(logsDir, `auto-fetch-${today}.log`);
+  const timestamp = new Date().toISOString();
+  const logEntry = `[${timestamp}] ${message}\n`;
+  
+  fs.appendFileSync(logFile, logEntry);
+  console.log(message); // Also log to console
+}
+
+function cleanupOldLogs() {
+  const files = fs.readdirSync(logsDir);
+  const logFiles = files.filter(file => file.startsWith('auto-fetch-') && file.endsWith('.log'));
+  
+  // Keep only the last 7 days
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 7);
+  
+  logFiles.forEach(file => {
+    const dateStr = file.replace('auto-fetch-', '').replace('.log', '');
+    const fileDate = new Date(dateStr);
+    
+    if (fileDate < cutoffDate) {
+      const filePath = path.join(logsDir, file);
+      fs.unlinkSync(filePath);
+      console.log(`Deleted old log file: ${file}`);
+    }
+  });
+}
+
+// Clean up old logs on startup
+cleanupOldLogs();
+
+// Automated scheduling for 5AM Eastern Time daily
+function scheduleAutoFetch() {
+  const now = new Date();
+  const easternTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+  
+  // Calculate time until next 5AM Eastern
+  const nextFetch = new Date(easternTime);
+  nextFetch.setHours(5, 0, 0, 0);
+  
+  // If it's already past 5AM today, schedule for tomorrow
+  if (easternTime.getHours() >= 5) {
+    nextFetch.setDate(nextFetch.getDate() + 1);
+  }
+  
+  const timeUntilFetch = nextFetch.getTime() - easternTime.getTime();
+  
+  logMessage(`Scheduled next auto fetch for ${nextFetch.toLocaleString()} Eastern Time (${Math.round(timeUntilFetch / 1000 / 60)} minutes from now)`);
+  
+  setTimeout(async () => {
+    try {
+      logMessage('Starting scheduled auto fetch...');
+      
+      // Calculate date range (last 65 days up to yesterday)
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() - 1); // Yesterday
+      const startDate = new Date(endDate);
+      startDate.setDate(startDate.getDate() - 64); // 64 days back from yesterday = 65 days total
+      
+      logMessage(`Fetching data from ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
+      
+      // Fetch data from SimpleSub
+      const waterUsageData = await fetchWaterUsageFromProvider(startDate, endDate);
+      
+      logMessage(`Successfully fetched data for ${Object.keys(waterUsageData).length} days`);
+      
+      // Store the data in the database
+      await storeWaterUsageData(waterUsageData);
+      logMessage('Data stored in database successfully');
+      
+      // Clean up old data (keep only last 65 days)
+      await cleanupOldWaterUsageData();
+      logMessage('Old data cleanup completed');
+      
+      // Clean up old logs
+      cleanupOldLogs();
+      
+      logMessage('Scheduled auto fetch completed successfully');
+      
+    } catch (error) {
+      logMessage(`Scheduled auto fetch error: ${error.message}`);
+      console.error('Scheduled auto fetch error:', error);
+    }
+    
+    // Schedule next fetch
+    scheduleAutoFetch();
+  }, timeUntilFetch);
+}
+
+// Start the scheduler
+scheduleAutoFetch();
+
 // Then the rest of your code:
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -60,6 +160,13 @@ app.post('/api/login', (req, res) => {
   if (!bcrypt.compareSync(password, AUTH_PASS_HASH)) return res.status(401).json({ error: 'Invalid credentials' });
   const token = jwt.sign({ username }, JWT_SECRET, { expiresIn: '8h' });
   res.json({ token });
+});
+
+// Token verification endpoint
+app.get('/api/verify-token', (req, res) => {
+  // The authMiddleware will handle the token verification
+  // If we reach this point, the token is valid
+  res.json({ valid: true });
 });
 
 // Database setup
@@ -675,35 +782,44 @@ app.post('/api/update-balances-for-bills', (req, res) => {
 // Automated data fetching endpoints
 app.post('/api/auto-fetch-data', async (req, res) => {
   try {
-    console.log('Automated data fetch requested');
+    logMessage('Automated data fetch started');
     
-             // Calculate date range (last 65 days up to yesterday)
-    const endDate = new Date();
-    endDate.setDate(endDate.getDate() - 1); // Yesterday
-    const startDate = new Date(endDate);
-    startDate.setDate(startDate.getDate() - 65);
+          // Calculate date range (last 65 days up to yesterday)
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() - 1); // Yesterday
+      const startDate = new Date(endDate);
+      startDate.setDate(startDate.getDate() - 64); // 64 days back from yesterday = 65 days total
     
-    console.log(`Fetching data from ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
+    logMessage(`Fetching data from ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
     
-    // TODO: Replace this with actual API call to your water usage provider
-    // For now, we'll simulate the API call with realistic data
+    // Fetch data from SimpleSub
     const waterUsageData = await fetchWaterUsageFromProvider(startDate, endDate);
+    
+    logMessage(`Successfully fetched data for ${Object.keys(waterUsageData).length} days`);
     
     // Store the data in the database
     await storeWaterUsageData(waterUsageData);
+    logMessage('Data stored in database successfully');
     
     // Clean up old data (keep only last 65 days)
     await cleanupOldWaterUsageData();
+    logMessage('Old data cleanup completed');
     
-         res.json({ 
-       success: true, 
-       message: `Successfully fetched and stored ${Object.keys(waterUsageData).length} days of water usage data (65-day rolling window)`,
-       dateRange: {
-         start: startDate.toISOString().split('T')[0],
-         end: endDate.toISOString().split('T')[0]
-       }
-     });
+    // Clean up old logs
+    cleanupOldLogs();
+    
+    logMessage('Automated data fetch completed successfully');
+    
+    res.json({ 
+      success: true, 
+      message: `Successfully fetched and stored ${Object.keys(waterUsageData).length} days of water usage data (65-day rolling window)`,
+      dateRange: {
+        start: startDate.toISOString().split('T')[0],
+        end: endDate.toISOString().split('T')[0]
+      }
+    });
   } catch (error) {
+    logMessage(`Auto fetch error: ${error.message}`);
     console.error('Auto fetch error:', error);
     res.status(500).json({ error: error.message });
   }
@@ -727,8 +843,8 @@ app.post('/api/auto-fetch-data', async (req, res) => {
    const csv = require('csv-parser');
   
   // SimpleSub login credentials
-  const SIMPLESUB_USERNAME = 'gooddogpropohio@gmail.com';
-  const SIMPLESUB_PASSWORD = 'VzX%r5%9e@V0xte*K7';
+  const SIMPLESUB_USERNAME = process.env.SIMPLESUB_USERNAME || 'gooddogpropohio@gmail.com';
+const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7';
   const SIMPLESUB_LOGIN_URL = 'https://app.simplesubwater.com/';
   
   // Property URLs
@@ -757,11 +873,11 @@ app.post('/api/auto-fetch-data', async (req, res) => {
   let browser;
   
   try {
-    console.log('Starting SimpleSub web scraping...');
+    logMessage('Starting SimpleSub web scraping...');
     
          // Launch browser with download configuration
      browser = await puppeteer.launch({
-       headless: false,
+       headless: true,
        args: ['--no-sandbox', '--disable-setuid-sandbox']
      });
     
@@ -1103,7 +1219,22 @@ app.post('/api/auto-fetch-data', async (req, res) => {
       }
     }
     
-    console.log(`Successfully scraped water usage data for ${Object.keys(usageData).length} days`);
+    logMessage(`Successfully scraped water usage data for ${Object.keys(usageData).length} days`);
+    
+    // Clean up downloaded CSV files
+    if (fs.existsSync(downloadsPath)) {
+      const csvFiles = fs.readdirSync(downloadsPath).filter(file => file.endsWith('.csv'));
+      csvFiles.forEach(file => {
+        const filePath = path.join(downloadsPath, file);
+        try {
+          fs.unlinkSync(filePath);
+          logMessage(`Cleaned up CSV file: ${file}`);
+        } catch (error) {
+          logMessage(`Warning: Could not delete CSV file: ${file}`);
+        }
+      });
+    }
+    
     return usageData;
     
   } catch (error) {
@@ -1200,66 +1331,92 @@ async function storeWaterUsageData(usageData) {
   });
 }
 
- // Get water usage data for database viewer (last 65 days)
+ // Get water usage data for database viewer (most recent 65 days with data)
  app.get('/api/water-usage-viewer', (req, res) => {
-   const endDate = new Date();
-   const startDate = new Date(endDate);
-   startDate.setDate(startDate.getDate() - 65);
-   
-   const startDateStr = startDate.toISOString().split('T')[0];
-   const endDateStr = endDate.toISOString().split('T')[0];
-   
-   db.all(`
-     SELECT u.unit_number, u.property, wu.date, wu.gallons
-     FROM units u
-     LEFT JOIN water_usage wu ON u.id = wu.unit_id AND wu.date BETWEEN ? AND ?
-     ORDER BY wu.date DESC, u.property, u.unit_number
-   `, [startDateStr, endDateStr], (err, rows) => {
+   // First, find the most recent date that has data
+   db.get(`SELECT MAX(date) as maxDate FROM water_usage`, (err, result) => {
      if (err) {
        res.status(500).json({ error: err.message });
        return;
      }
      
-     // Create a matrix structure for the table
-     const dates = [];
-     const units = [];
-     const dataMatrix = {};
+
      
-     // Get all unique dates and units
-     rows.forEach(row => {
-       if (row.date && !dates.includes(row.date)) {
-         dates.push(row.date);
-       }
-       const unitKey = `${row.property}-${row.unit_number}`;
-       if (!units.includes(unitKey)) {
-         units.push(unitKey);
-       }
-     });
-     
-     // Sort dates (newest first) and units
-     dates.sort((a, b) => new Date(b) - new Date(a));
-     units.sort();
-     
-     // Initialize data matrix
-     dates.forEach(date => {
-       dataMatrix[date] = {};
-       units.forEach(unit => {
-         dataMatrix[date][unit] = 0;
+     if (!result || !result.maxDate) {
+       // No data in database
+       res.json({
+         dates: [],
+         units: [],
+         dataMatrix: {}
        });
-     });
+       return;
+     }
      
-     // Fill in the actual data
-     rows.forEach(row => {
-       if (row.date && row.gallons) {
-         const unitKey = `${row.property}-${row.unit_number}`;
-         dataMatrix[row.date][unitKey] = row.gallons;
+     // Calculate date range: most recent date with data, going back 65 days
+     const endDate = new Date(result.maxDate);
+     const startDate = new Date(endDate);
+     startDate.setDate(startDate.getDate() - 64); // 65 days total (including end date)
+     
+     const startDateStr = startDate.toISOString().split('T')[0];
+     const endDateStr = endDate.toISOString().split('T')[0];
+     
+
+     
+     // Now get the water usage data for this date range
+     db.all(`
+       SELECT u.unit_number, u.property, wu.date, wu.gallons
+       FROM units u
+       LEFT JOIN water_usage wu ON u.id = wu.unit_id AND wu.date BETWEEN ? AND ?
+       ORDER BY wu.date DESC, u.property, u.unit_number
+     `, [startDateStr, endDateStr], (err, rows) => {
+       if (err) {
+         res.status(500).json({ error: err.message });
+         return;
        }
-     });
-     
-     res.json({
-       dates: dates,
-       units: units,
-       dataMatrix: dataMatrix
+       
+       // Create a matrix structure for the table
+       const dates = [];
+       const units = [];
+       const dataMatrix = {};
+       
+       // Get all unique dates and units
+       rows.forEach(row => {
+         if (row.date && !dates.includes(row.date)) {
+           dates.push(row.date);
+         }
+         const unitKey = `${row.property}-${row.unit_number}`;
+         if (!units.includes(unitKey)) {
+           units.push(unitKey);
+         }
+       });
+       
+       // Sort dates (newest first) and units
+       dates.sort((a, b) => new Date(b) - new Date(a));
+       units.sort();
+       
+       // Initialize data matrix
+       dates.forEach(date => {
+         dataMatrix[date] = {};
+         units.forEach(unit => {
+           dataMatrix[date][unit] = 0;
+         });
+       });
+       
+       // Fill in the actual data
+       rows.forEach(row => {
+         if (row.date && row.gallons) {
+           const unitKey = `${row.property}-${row.unit_number}`;
+           dataMatrix[row.date][unitKey] = row.gallons;
+         }
+       });
+       
+
+       
+       res.json({
+         dates: dates,
+         units: units,
+         dataMatrix: dataMatrix
+       });
      });
    });
  });
@@ -1384,6 +1541,64 @@ app.post('/api/process-bills-from-data', async (req, res) => {
   }
 });
 
+// Update tenant balances from bills
+app.post('/api/update-tenant-balances', async (req, res) => {
+  try {
+    const { bills } = req.body;
+    
+    if (!Array.isArray(bills)) {
+      return res.status(400).json({ error: 'Invalid bills data' });
+    }
+
+    // Process each bill to update tenant balance
+    for (const bill of bills) {
+      if (!bill.tenant_id || !bill.total_amount) {
+        console.warn('Skipping bill with missing tenant_id or total_amount:', bill);
+        continue;
+      }
+
+      // Get current tenant balance
+      const currentBalance = await new Promise((resolve, reject) => {
+        db.get(
+          `SELECT current_balance FROM tenants WHERE id = ?`,
+          [bill.tenant_id],
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(row ? row.current_balance : 0);
+          }
+        );
+      });
+
+      // Calculate new balance (add bill amount to existing balance)
+      const newBalance = currentBalance + bill.total_amount;
+
+      // Update tenant balance
+      await new Promise((resolve, reject) => {
+        db.run(
+          `UPDATE tenants SET current_balance = ? WHERE id = ?`,
+          [newBalance, bill.tenant_id],
+          function(err) {
+            if (err) reject(err);
+            else resolve();
+          }
+        );
+      });
+
+      console.log(`Updated balance for tenant ${bill.tenant_name}: $${currentBalance} + $${bill.total_amount} = $${newBalance}`);
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Updated balances for ${bills.length} tenants`,
+      updatedCount: bills.length
+    });
+
+  } catch (error) {
+    console.error('Update tenant balances error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/process-auto-bills', async (req, res) => {
   try {
     const { usageData } = req.body;
@@ -1495,170 +1710,31 @@ app.post('/api/process-auto-bills', async (req, res) => {
   }
 });
 
-// Test endpoint to parse CSV files from SAMPLE DATA directory
-app.post('/api/test-csv-parsing', async (req, res) => {
+
+
+// Get log files
+app.get('/api/logs', (req, res) => {
   try {
-    console.log('Testing CSV parsing from SAMPLE DATA directory...');
+    const files = fs.readdirSync(logsDir);
+    const logFiles = files
+      .filter(file => file.startsWith('auto-fetch-') && file.endsWith('.log'))
+      .sort()
+      .reverse(); // Most recent first
     
-    const fs = require('fs');
-    const path = require('path');
-    const csv = require('csv-parser');
-    
-    const sampleDataPath = path.join(process.cwd(), 'SAMPLE DATA');
-    const csvFiles = fs.readdirSync(sampleDataPath).filter(file => file.endsWith('.csv'));
-    
-    console.log(`Found ${csvFiles.length} CSV files in SAMPLE DATA directory:`, csvFiles);
-    
-    const usageData = {};
-    const allDates = new Set(); // Track all dates found in CSV files
-    
-    // Process each CSV file
-    for (const csvFile of csvFiles) {
-      const filePath = path.join(sampleDataPath, csvFile);
-      console.log(`Processing CSV file: ${csvFile}`);
-      
-      // Determine property name from filename
-      let propertyName = '';
-      if (csvFile.includes('CHAMPION')) {
-        propertyName = 'Champion';
-      } else if (csvFile.includes('BARNETT') && !csvFile.includes('532')) {
-        propertyName = 'Barnett';
-      } else if (csvFile.includes('532_BARNETT')) {
-        propertyName = '532 Barnett';
-      } else if (csvFile.includes('CUSHING')) {
-        propertyName = 'Cushing';
-      }
-      
-      if (!propertyName) {
-        console.warn(`Could not determine property name for file: ${csvFile}`);
-        continue;
-      }
-      
-      console.log(`Identified property: ${propertyName}`);
-      
-      // Parse the CSV file
-      const csvData = [];
-      await new Promise((resolve, reject) => {
-        fs.createReadStream(filePath)
-          .pipe(csv())
-          .on('data', (data) => csvData.push(data))
-          .on('end', resolve)
-          .on('error', reject);
-      });
-      
-      console.log(`Parsed ${csvData.length} rows from ${csvFile}`);
-      
-      // Process the CSV data
-      csvData.forEach(row => {
-        const dateKey = row['Date (America/New_York)'] || row['Date'] || row['date'];
-        
-        // Skip the Total row and Property Total rows
-        if (dateKey && (dateKey.includes('Total') || dateKey.includes('Property Total'))) {
-          return;
-        }
-        
-        // Parse the date
-        if (dateKey && dateKey.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) {
-          const [month, day, year] = dateKey.split('/');
-          const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          
-          // Add this date to our set of all dates
-          allDates.add(dateStr);
-          
-          // Process each unit column based on the property
-          Object.keys(row).forEach(key => {
-            if (key.includes('(gal)') && row[key]) {
-              let unitNumber = key.replace(' (gal)', '').trim();
-              
-              // Skip Property Total columns
-              if (unitNumber.includes('Property Total')) {
-                return;
-              }
-              
-              // Map unit numbers correctly based on property
-              let mappedUnitNumber = unitNumber;
-              
-              if (propertyName === 'Champion') {
-                // Champion CSV only contains 484 and 486
-                if (!['484', '486'].includes(unitNumber)) {
-                  console.log(`Skipping unit ${unitNumber} for Champion property`);
-                  return; // Skip units that don't belong to Champion
-                }
-              } else if (propertyName === 'Barnett') {
-                // Barnett CSV only contains 483, 485, 487, 489
-                if (!['483', '485', '487', '489'].includes(unitNumber)) {
-                  console.log(`Skipping unit ${unitNumber} for Barnett property`);
-                  return; // Skip units that don't belong to Barnett
-                }
-              } else if (propertyName === '532 Barnett') {
-                // 532 Barnett CSV only contains A, B, C, D (mapped to 532A, 532B, etc.)
-                if (!['A', 'B', 'C', 'D'].includes(unitNumber)) {
-                  console.log(`Skipping unit ${unitNumber} for 532 Barnett property`);
-                  return; // Skip units that don't belong to 532 Barnett
-                }
-                mappedUnitNumber = '532' + unitNumber;
-              } else if (propertyName === 'Cushing') {
-                // Cushing CSV only contains A, B, C, D (mapped to CushingA, CushingB, etc.)
-                if (!['A', 'B', 'C', 'D'].includes(unitNumber)) {
-                  console.log(`Skipping unit ${unitNumber} for Cushing property`);
-                  return; // Skip units that don't belong to Cushing
-                }
-                mappedUnitNumber = 'Cushing' + unitNumber;
-              }
-              
-              console.log(`Processing ${propertyName} - ${mappedUnitNumber}: ${row[key]} gallons on ${dateStr}`);
-              
-              const gallons = parseFloat(row[key]);
-              if (!isNaN(gallons)) {
-                if (!usageData[dateStr]) {
-                  usageData[dateStr] = {
-                    'Champion': {},
-                    'Barnett': {},
-                    '532 Barnett': {},
-                    'Cushing': {}
-                  };
-                }
-                if (!usageData[dateStr][propertyName]) {
-                  usageData[dateStr][propertyName] = {};
-                }
-                usageData[dateStr][propertyName][mappedUnitNumber] = gallons;
-              }
-            }
-          });
-        }
-      });
-      
-      console.log(`Successfully processed data for ${propertyName}`);
-    }
-    
-    // Store the parsed data in the database
-    await storeWaterUsageData(usageData);
-    
-    // Clean up old data (keep only last 65 days)
-    await cleanupOldWaterUsageData();
-    
-    // Determine the actual date range from the CSV data
-    const sortedDates = Array.from(allDates).sort();
-    const actualStartDate = sortedDates[0];
-    const actualEndDate = sortedDates[sortedDates.length - 1];
-    
-    console.log(`Successfully parsed and stored data from ${csvFiles.length} CSV files`);
-    console.log(`Date range found in CSV files: ${actualStartDate} to ${actualEndDate} (${sortedDates.length} days)`);
-    
-    res.json({ 
-      success: true, 
-      message: `Successfully parsed and stored data from ${csvFiles.length} CSV files`,
-      filesProcessed: csvFiles,
-      dateRange: {
-        start: actualStartDate,
-        end: actualEndDate,
-        totalDays: sortedDates.length
-      }
+    const logs = logFiles.map(file => {
+      const dateStr = file.replace('auto-fetch-', '').replace('.log', '');
+      const content = fs.readFileSync(path.join(logsDir, file), 'utf8');
+      return {
+        date: dateStr,
+        filename: file,
+        content: content
+      };
     });
     
+    res.json(logs);
   } catch (error) {
-    console.error('Test CSV parsing error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error reading logs:', error);
+    res.status(500).json({ error: 'Failed to read logs' });
   }
 });
 

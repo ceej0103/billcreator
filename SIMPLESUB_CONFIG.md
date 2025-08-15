@@ -16,8 +16,8 @@ The bill creator now uses web scraping to automatically fetch water usage data f
 The system is pre-configured with your SimpleSub credentials and property URLs:
 
 ### Login Credentials
-- **Username**: gooddogpropohio@gmail.com
-- **Password**: VzX%r5%9e@V0xte*K7
+- **Username**: Set via SIMPLESUB_USERNAME environment variable
+- **Password**: Set via SIMPLESUB_PASSWORD environment variable
 - **Login URL**: https://app.simplesubwater.com/
 
 ### Property URLs

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { Home, Users, DollarSign, Settings, FileText, CreditCard, Download } from 'lucide-react';
+import { Home, Users, DollarSign, Settings, FileText, CreditCard, Download, LogOut } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import UpdateTenants from './components/UpdateTenants';
 import UpdateBalances from './components/UpdateBalances';
@@ -17,7 +17,8 @@ axios.interceptors.response.use(
   error => {
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('token');
-      window.location.reload();
+      // Redirect to root path instead of reloading
+      window.location.href = '/';
     }
     return Promise.reject(error);
   }
@@ -27,14 +28,52 @@ function App() {
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [authChecked, setAuthChecked] = useState(false);
 
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    delete axios.defaults.headers.common['Authorization'];
+    setToken('');
+    window.location.href = '/';
+  };
+
   useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete axios.defaults.headers.common['Authorization'];
-    }
-    setAuthChecked(true);
-  }, [token]);
+    const verifyToken = async () => {
+      const storedToken = localStorage.getItem('token');
+      
+      if (storedToken) {
+        try {
+          // Set the token in axios headers
+          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+          
+          // Verify the token is still valid by making a test request
+          await axios.get('/api/verify-token');
+          
+          // If successful, set the token
+          setToken(storedToken);
+        } catch (error) {
+          // If token verification fails, remove it and redirect to login
+          console.log('Token verification failed, redirecting to login');
+          localStorage.removeItem('token');
+          delete axios.defaults.headers.common['Authorization'];
+          setToken('');
+          // Redirect to root to ensure we're on the login page
+          if (window.location.pathname !== '/') {
+            window.location.href = '/';
+          }
+        }
+      } else {
+        // No token found, ensure we're on the login page
+        delete axios.defaults.headers.common['Authorization'];
+        setToken('');
+        if (window.location.pathname !== '/') {
+          window.location.href = '/';
+        }
+      }
+      
+      setAuthChecked(true);
+    };
+
+    verifyToken();
+  }, []);
 
   // 1. Don't render anything until auth check is complete
   if (!authChecked) {
@@ -106,6 +145,17 @@ function App() {
                 <Download className="w-5 h-5 mr-3" />
                 Auto Data Fetch
               </Link>
+              
+              {/* Logout Button */}
+              <div className="mt-8 pt-4 border-t border-gray-200">
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center px-4 py-2 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors w-full"
+                >
+                  <LogOut className="w-5 h-5 mr-3" />
+                  Logout
+                </button>
+              </div>
             </nav>
           </div>
         </nav>

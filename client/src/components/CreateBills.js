@@ -9,8 +9,10 @@ function CreateBills() {
   const [waterUsage, setWaterUsage] = useState({});
   const [previousMonthUsage, setPreviousMonthUsage] = useState({});
   const [bills, setBills] = useState([]);
+  const [billCheckboxes, setBillCheckboxes] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingBills, setIsGeneratingBills] = useState(false);
+  const [isUpdatingBalances, setIsUpdatingBalances] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -232,6 +234,7 @@ function CreateBills() {
           tenant_id: unit.tenant_id,
           tenant_name: unit.name || 'No Tenant',
           unit_number: unit.unit_number,
+          property: unit.property,
           address: unit.address,
           period_start: startDate,
           period_end: endDate,
@@ -279,6 +282,55 @@ function CreateBills() {
     }
   };
 
+  // Handle checkbox changes for bill balance updates
+  const handleBillCheckboxChange = (billIndex, checked) => {
+    setBillCheckboxes(prev => ({
+      ...prev,
+      [billIndex]: checked
+    }));
+  };
+
+  // Initialize checkboxes when bills are generated
+  useEffect(() => {
+    if (bills.length > 0) {
+      const initialCheckboxes = {};
+      bills.forEach((_, index) => {
+        initialCheckboxes[index] = true; // Default to checked
+      });
+      setBillCheckboxes(initialCheckboxes);
+    }
+  }, [bills]);
+
+  // Update tenant balances for selected bills
+  const updateTenantBalances = async () => {
+    const selectedBills = bills.filter((_, index) => billCheckboxes[index]);
+    
+    if (selectedBills.length === 0) {
+      setError('No bills selected for balance update');
+      return;
+    }
+
+    setIsUpdatingBalances(true);
+    setError('');
+
+    try {
+      const response = await axios.post('/api/update-tenant-balances', {
+        bills: selectedBills
+      });
+
+      if (response.data.success) {
+        setError(''); // Clear any previous errors
+        // You could add a success message here
+        console.log('Balances updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating balances:', error);
+      setError('Failed to update tenant balances');
+    } finally {
+      setIsUpdatingBalances(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     // Ensure the date is parsed correctly by adding timezone info
     const date = new Date(dateString + 'T00:00:00');
@@ -304,85 +356,107 @@ function CreateBills() {
         <p className="text-sm text-gray-600 mb-4">
           Date range has been automatically suggested based on the current date. You can modify it if needed.
         </p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-           <div>
-             <label className="block text-sm font-medium text-gray-700 mb-2">
-               Start Date
-             </label>
-             <div className="relative">
-                               <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3 py-2 pr-20 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-                                <div className="absolute left-20 top-1/2 transform -translate-y-1/2 flex space-x-1">
-                 <button
-                   onClick={() => navigatePeriod('left')}
-                   disabled={!startDate || !endDate}
-                   className={`p-1.5 rounded-md transition-all duration-200 ${
-                     !startDate || !endDate
-                       ? 'text-gray-300 cursor-not-allowed'
-                       : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200'
-                   }`}
-                   title="Previous Period"
-                 >
-                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                   </svg>
-                 </button>
-                 <button
-                   onClick={() => navigatePeriod('right')}
-                   disabled={!startDate || !endDate}
-                   className={`p-1.5 rounded-md transition-all duration-200 ${
-                     !startDate || !endDate
-                       ? 'text-gray-300 cursor-not-allowed'
-                       : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200'
-                   }`}
-                   title="Next Period"
-                 >
-                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                   </svg>
-                 </button>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+           <div className="space-y-4">
+             <div>
+               <div className="flex items-center mb-2">
+                 <label className="block text-sm font-medium text-gray-700">
+                   Start Date
+                 </label>
+                 <div className="flex space-x-1 ml-2">
+                   <button
+                     onClick={() => navigatePeriod('left')}
+                     disabled={!startDate || !endDate}
+                     className={`p-1.5 rounded-md transition-all duration-200 ${
+                       !startDate || !endDate
+                         ? 'text-gray-300 cursor-not-allowed'
+                         : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200'
+                     }`}
+                     title="Previous Period"
+                   >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                     </svg>
+                   </button>
+                   <button
+                     onClick={() => navigatePeriod('right')}
+                     disabled={!startDate || !endDate}
+                     className={`p-1.5 rounded-md transition-all duration-200 ${
+                       !startDate || !endDate
+                         ? 'text-gray-300 cursor-not-allowed'
+                         : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200'
+                     }`}
+                     title="Next Period"
+                   >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                     </svg>
+                   </button>
+                 </div>
                </div>
+               <input
+                 type="date"
+                 value={startDate}
+                 onChange={(e) => setStartDate(e.target.value)}
+                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+               />
+             </div>
+             
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-2">
+                 End Date
+               </label>
+               <input
+                 type="date"
+                 value={endDate}
+                 onChange={(e) => setEndDate(e.target.value)}
+                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+               />
              </div>
            </div>
+           
            <div>
-             <label className="block text-sm font-medium text-gray-700 mb-2">
-               End Date
-             </label>
-             <input
-               type="date"
-               value={endDate}
-               onChange={(e) => setEndDate(e.target.value)}
-               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-             />
+             {startDate && endDate ? (
+               <div className="p-4 bg-blue-50 rounded-lg h-full">
+                 <div className="space-y-3">
+                   <div>
+                     <p className="text-sm text-blue-800">
+                       <strong>Billing Period:</strong><br />
+                       {formatDate(startDate)} - {formatDate(endDate)}
+                     </p>
+                   </div>
+                   <div>
+                     <p className="text-sm text-blue-800">
+                       <strong>Billing Days:</strong><br />
+                       {calculateBillingDays()} days
+                     </p>
+                   </div>
+                   <div>
+                     <p className="text-sm text-blue-800">
+                       <strong>Previous Month Comparison:</strong><br />
+                       {(() => {
+                         const prev = calculatePreviousMonthRange();
+                         return prev.start && prev.end ? `${formatDate(prev.start)} - ${formatDate(prev.end)}` : 'Not available';
+                       })()}
+                     </p>
+                   </div>
+                   {isLoading && (
+                     <div className="flex items-center text-blue-600 pt-2">
+                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                       <span className="text-sm">Loading usage data...</span>
+                     </div>
+                   )}
+                 </div>
+               </div>
+             ) : (
+               <div className="p-4 bg-gray-50 rounded-lg h-full flex items-center justify-center">
+                 <p className="text-sm text-gray-500 text-center">
+                   Select start and end dates to see billing information
+                 </p>
+               </div>
+             )}
            </div>
          </div>
-        
-                 {startDate && endDate && (
-           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-             <div className="flex items-center justify-between">
-               <p className="text-sm text-blue-800">
-                 <strong>Billing Period:</strong> {formatDate(startDate)} - {formatDate(endDate)} 
-                 <br />
-                 <strong>Billing Days:</strong> {calculateBillingDays()} days
-                 <br />
-                 <strong>Previous Month Comparison:</strong> {(() => {
-                   const prev = calculatePreviousMonthRange();
-                   return prev.start && prev.end ? `${formatDate(prev.start)} - ${formatDate(prev.end)}` : 'Not available';
-                 })()}
-               </p>
-               {isLoading && (
-                 <div className="flex items-center text-blue-600">
-                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                   <span className="text-sm">Loading usage data...</span>
-                 </div>
-               )}
-             </div>
-           </div>
-         )}
       </div>
 
       {/* Error Display */}
@@ -475,19 +549,56 @@ function CreateBills() {
             <h2 className="text-xl font-semibold text-gray-900">
               Generated Bills ({bills.length} bills)
             </h2>
-            <button
-              onClick={downloadAllBills}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
-            >
-              <Download className="w-4 h-4 inline mr-2" />
-              Download All Bills
-            </button>
+            <div className="flex space-x-3">
+              <button
+                onClick={updateTenantBalances}
+                disabled={isUpdatingBalances}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed"
+              >
+                {isUpdatingBalances ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white inline mr-2"></div>
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 inline mr-2" />
+                    Update Balances
+                  </>
+                )}
+              </button>
+              <button
+                onClick={downloadAllBills}
+                className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+              >
+                <Download className="w-4 h-4 inline mr-2" />
+                Download All Bills
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700">
+              <strong>Balance Update:</strong> Check the boxes below to add bill amounts to tenant balances. 
+              Unchecked bills will not affect tenant balances. Existing balances will be added to.
+            </p>
           </div>
 
           <div className="space-y-3">
             {bills.map((bill, index) => (
               <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
+                <div className="flex items-center space-x-4">
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={billCheckboxes[index] || false}
+                      onChange={(e) => handleBillCheckboxChange(index, e.target.checked)}
+                      className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Update Balance</span>
+                  </label>
+                </div>
+                <div className="flex-1 ml-4">
                   <h3 className="font-medium text-gray-900">{bill.tenant_name}</h3>
                   <p className="text-sm text-gray-600">{bill.address}</p>
                   <p className="text-sm text-gray-500">

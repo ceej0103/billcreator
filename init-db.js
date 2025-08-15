@@ -101,20 +101,20 @@ db.serialize(() => {
 
   // Insert default units
   const units = [
-    { unit_number: '484', property: 'Champion', address: '484 Champion St' },
-    { unit_number: '486', property: 'Champion', address: '486 Champion St' },
-    { unit_number: '483', property: 'Barnett', address: '483 Barnett St' },
-    { unit_number: '485', property: 'Barnett', address: '485 Barnett St' },
-    { unit_number: '487', property: 'Barnett', address: '487 Barnett St' },
-    { unit_number: '489', property: 'Barnett', address: '489 Barnett St' },
-    { unit_number: '532A', property: '532 Barnett', address: '532 Barnett St, Unit A' },
-    { unit_number: '532B', property: '532 Barnett', address: '532 Barnett St, Unit B' },
-    { unit_number: '532C', property: '532 Barnett', address: '532 Barnett St, Unit C' },
-    { unit_number: '532D', property: '532 Barnett', address: '532 Barnett St, Unit D' },
-    { unit_number: 'CushingA', property: 'Cushing', address: 'Cushing St, Unit A' },
-    { unit_number: 'CushingB', property: 'Cushing', address: 'Cushing St, Unit B' },
-    { unit_number: 'CushingC', property: 'Cushing', address: 'Cushing St, Unit C' },
-    { unit_number: 'CushingD', property: 'Cushing', address: 'Cushing St, Unit D' }
+    { unit_number: '484', property: 'Champion', address: '484 S Champion Avenue' },
+    { unit_number: '486', property: 'Champion', address: '486 S Champion Avenue' },
+    { unit_number: '483', property: 'Barnett', address: '483 Barnett Road' },
+    { unit_number: '485', property: 'Barnett', address: '485 Barnett Road' },
+    { unit_number: '487', property: 'Barnett', address: '487 Barnett Road' },
+    { unit_number: '489', property: 'Barnett', address: '489 Barnett Road' },
+    { unit_number: '532A', property: '532 Barnett', address: '532 Barnett Road, Unit A' },
+    { unit_number: '532B', property: '532 Barnett', address: '532 Barnett Road, Unit B' },
+    { unit_number: '532C', property: '532 Barnett', address: '532 Barnett Road, Unit C' },
+    { unit_number: '532D', property: '532 Barnett', address: '532 Barnett Road, Unit D' },
+    { unit_number: 'CushingA', property: 'Cushing', address: '3631 Cushing Drive, Unit A' },
+    { unit_number: 'CushingB', property: 'Cushing', address: '3631 Cushing Drive, Unit B' },
+    { unit_number: 'CushingC', property: 'Cushing', address: '3631 Cushing Drive, Unit C' },
+    { unit_number: 'CushingD', property: 'Cushing', address: '3631 Cushing Drive, Unit D' }
   ];
 
   units.forEach(unit => {
