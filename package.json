@@ -9,8 +9,7 @@
     "build": "echo 'Build completed'",
     "install-client": "cd client && npm install",
     "heroku-postbuild": "npm run install-client && cd client && npm run build",
-    "railway-postbuild": "npm run install-client && cd client && npm run build",
-    "postinstall": "cd client && npm install"
+    "railway-postbuild": "npm run install-client && cd client && npm run build"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
