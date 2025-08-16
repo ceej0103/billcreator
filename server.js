@@ -17,10 +17,13 @@ const AUTH_USER = 'GDP';
 const AUTH_PASS_HASH = '$2b$10$eo0OFQFJm.f8XdC3xrqK5ehqqWd4NGEVE8nWCTlhS0CKSDrkASzLy';
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
-// Logging functionality
-const logsDir = path.join(__dirname, 'logs');
+// Logging functionality - use persistent disk if available
+const logsDir = process.env.NODE_ENV === 'production' && fs.existsSync('/var/data')
+  ? '/var/data/logs'
+  : path.join(__dirname, 'logs');
+
 if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir);
+  fs.mkdirSync(logsDir, { recursive: true });
 }
 
 function logMessage(message) {
@@ -263,6 +266,8 @@ const dbPath = process.env.NODE_ENV === 'production' && fs.existsSync('/var/data
   : './bills.db';
 
 console.log(`📦 Using database at: ${dbPath}`);
+console.log(`📁 Using logs directory: ${logsDir}`);
+
 const db = new sqlite3.Database(dbPath);
 
 // Initialize database tables
@@ -364,7 +369,18 @@ db.serialize(() => {
 });
 
 // File upload configuration
-const upload = multer({ dest: 'uploads/' });
+// Uploads directory - use persistent disk if available
+const uploadsDir = process.env.NODE_ENV === 'production' && fs.existsSync('/var/data')
+  ? '/var/data/uploads'
+  : 'uploads';
+
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+console.log(`📤 Using uploads directory: ${uploadsDir}`);
+
+const upload = multer({ dest: uploadsDir });
 
 // API Routes
 
@@ -1014,9 +1030,13 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
      await page.setViewport({ width: 1920, height: 1080 });
      
            // Configure download behavior
-      const downloadsPath = path.join(process.cwd(), 'downloads');
+      // Downloads directory - use persistent disk if available
+      const downloadsPath = process.env.NODE_ENV === 'production' && fs.existsSync('/var/data')
+        ? '/var/data/downloads'
+        : path.join(process.cwd(), 'downloads');
+      
       if (!fs.existsSync(downloadsPath)) {
-        fs.mkdirSync(downloadsPath);
+        fs.mkdirSync(downloadsPath, { recursive: true });
       }
       
       // Clean up any existing CSV files before starting
