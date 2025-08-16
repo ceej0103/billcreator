@@ -42,32 +42,54 @@ function logMemoryUsage(step) {
     external: Math.round(used.external / 1024 / 1024)    // External memory
   };
   
-  // Get system-wide memory usage
+  // Get container-specific memory usage
   try {
     const { execSync } = require('child_process');
     
-    // Get total container memory info
-    const memInfo = execSync('cat /proc/meminfo', { encoding: 'utf8' });
-    const totalMatch = memInfo.match(/MemTotal:\s+(\d+)\s+kB/);
-    const availableMatch = memInfo.match(/MemAvailable:\s+(\d+)\s+kB/);
+    // Try to get container memory limits and usage from cgroups
+    let containerMessage = '';
     
-    if (totalMatch && availableMatch) {
-      const totalMB = Math.round(parseInt(totalMatch[1]) / 1024);
-      const availableMB = Math.round(parseInt(availableMatch[1]) / 1024);
-      const usedMB = totalMB - availableMB;
-      const usedPercent = Math.round((usedMB / totalMB) * 100);
+    try {
+      // Check memory limit (container constraint)
+      const memLimit = execSync('cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || echo "unknown"', { encoding: 'utf8' }).trim();
+      const memUsage = execSync('cat /sys/fs/cgroup/memory/memory.usage_in_bytes 2>/dev/null || echo "unknown"', { encoding: 'utf8' }).trim();
       
-      const message = `${step} - Node: RSS=${memMB.rss}MB, Heap=${memMB.heapUsed}/${memMB.heapTotal}MB | Container: ${usedMB}MB/${totalMB}MB (${usedPercent}%)`;
-      logMessage(message);
-      console.log(`🧠 ${message}`);
-    } else {
-      // Fallback to Node.js only if system info unavailable
-      const message = `${step} - Memory: RSS=${memMB.rss}MB, Heap=${memMB.heapUsed}/${memMB.heapTotal}MB, External=${memMB.external}MB`;
-      logMessage(message);
-      console.log(`🧠 ${message}`);
+      if (memLimit !== 'unknown' && memUsage !== 'unknown') {
+        const limitMB = Math.round(parseInt(memLimit) / 1024 / 1024);
+        const usageMB = Math.round(parseInt(memUsage) / 1024 / 1024);
+        const usedPercent = Math.round((usageMB / limitMB) * 100);
+        
+        containerMessage = ` | Container: ${usageMB}MB/${limitMB}MB (${usedPercent}%)`;
+      }
+    } catch (cgroupError) {
+      // Try alternative cgroup v2 paths
+      try {
+        const memMax = execSync('cat /sys/fs/cgroup/memory.max 2>/dev/null || echo "unknown"', { encoding: 'utf8' }).trim();
+        const memCurrent = execSync('cat /sys/fs/cgroup/memory.current 2>/dev/null || echo "unknown"', { encoding: 'utf8' }).trim();
+        
+        if (memMax !== 'unknown' && memCurrent !== 'unknown' && memMax !== 'max') {
+          const limitMB = Math.round(parseInt(memMax) / 1024 / 1024);
+          const usageMB = Math.round(parseInt(memCurrent) / 1024 / 1024);
+          const usedPercent = Math.round((usageMB / limitMB) * 100);
+          
+          containerMessage = ` | Container: ${usageMB}MB/${limitMB}MB (${usedPercent}%)`;
+        }
+      } catch (cgroup2Error) {
+        // No container limits found, assume 512MB Render limit
+        const assumedLimit = 512;
+        const estimatedUsage = memMB.rss + 100; // RSS + estimated overhead for Chromium
+        const usedPercent = Math.round((estimatedUsage / assumedLimit) * 100);
+        
+        containerMessage = ` | Estimated: ${estimatedUsage}MB/${assumedLimit}MB (${usedPercent}%)`;
+      }
     }
+    
+    const message = `${step} - Node: RSS=${memMB.rss}MB, Heap=${memMB.heapUsed}/${memMB.heapTotal}MB${containerMessage}`;
+    logMessage(message);
+    console.log(`🧠 ${message}`);
+    
   } catch (error) {
-    // Fallback to Node.js only if system commands fail
+    // Complete fallback to Node.js only
     const message = `${step} - Memory: RSS=${memMB.rss}MB, Heap=${memMB.heapUsed}/${memMB.heapTotal}MB, External=${memMB.external}MB`;
     logMessage(message);
     console.log(`🧠 ${message}`);
