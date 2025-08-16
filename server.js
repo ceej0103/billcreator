@@ -33,6 +33,19 @@ function logMessage(message) {
   console.log(message); // Also log to console
 }
 
+function logMemoryUsage(step) {
+  const used = process.memoryUsage();
+  const memMB = {
+    rss: Math.round(used.rss / 1024 / 1024),       // Total memory
+    heapTotal: Math.round(used.heapTotal / 1024 / 1024), // Heap allocated
+    heapUsed: Math.round(used.heapUsed / 1024 / 1024),   // Heap used
+    external: Math.round(used.external / 1024 / 1024)    // External memory
+  };
+  const message = `${step} - Memory: RSS=${memMB.rss}MB, Heap=${memMB.heapUsed}/${memMB.heapTotal}MB, External=${memMB.external}MB`;
+  logMessage(message);
+  console.log(`🧠 ${message}`);
+}
+
 function cleanupOldLogs() {
   const files = fs.readdirSync(logsDir);
   const logFiles = files.filter(file => file.startsWith('auto-fetch-') && file.endsWith('.log'));
@@ -783,6 +796,7 @@ app.post('/api/update-balances-for-bills', (req, res) => {
 app.post('/api/auto-fetch-data', async (req, res) => {
   try {
     logMessage('Automated data fetch started');
+    logMemoryUsage('Auto fetch started');
     
           // Calculate date range (last 65 days up to yesterday)
       const endDate = new Date();
@@ -809,6 +823,13 @@ app.post('/api/auto-fetch-data', async (req, res) => {
     cleanupOldLogs();
     
     logMessage('Automated data fetch completed successfully');
+    logMemoryUsage('Auto fetch completed');
+    
+    // Force garbage collection if available
+    if (global.gc) {
+      global.gc();
+      logMemoryUsage('After garbage collection');
+    }
     
     res.json({ 
       success: true, 
@@ -875,6 +896,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
   
   try {
     logMessage('Starting SimpleSub web scraping...');
+    logMemoryUsage('Before Puppeteer launch');
     
          // Launch browser with download configuration
      browser = await puppeteer.launch({
@@ -891,6 +913,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
      });
     
          const page = await browser.newPage();
+     logMemoryUsage('After Puppeteer launch');
      
      // Set viewport
      await page.setViewport({ width: 1920, height: 1080 });
@@ -947,6 +970,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
     // Process each property
     for (const [propertyName, propertyUrl] of Object.entries(propertyUrls)) {
       console.log(`Processing property: ${propertyName}`);
+      logMemoryUsage(`Before processing ${propertyName}`);
       
       try {
         // Navigate to property page
@@ -1220,6 +1244,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
         } else {
           console.warn(`No CSV file found for ${propertyName}`);
         }
+        logMemoryUsage(`After processing ${propertyName}`);
         
       } catch (error) {
         console.error(`Error processing property ${propertyName}:`, error.message);
@@ -1246,11 +1271,15 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
     return usageData;
     
   } catch (error) {
+    logMessage(`Error scraping SimpleSub website: ${error}`);
+    logMemoryUsage('During error handling');
     console.error('Error scraping SimpleSub website:', error);
     throw new Error(`Failed to scrape water usage data: ${error.message}`);
   } finally {
     if (browser) {
+      logMemoryUsage('Before browser cleanup');
       await browser.close();
+      logMemoryUsage('After browser cleanup');
     }
   }
 }
@@ -1753,4 +1782,5 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  logMemoryUsage('Server startup');
 }); 

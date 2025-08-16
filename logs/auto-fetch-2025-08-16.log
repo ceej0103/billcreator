@@ -18,3 +18,32 @@
 [2025-08-16T11:39:16.161Z] Old data cleanup completed
 [2025-08-16T11:39:16.162Z] Automated data fetch completed successfully
 [2025-08-16T11:41:33.352Z] Scheduled next auto fetch for 8/17/2025, 5:00:00 AM Eastern Time (1278 minutes from now)
+[2025-08-16T12:09:58.976Z] Scheduled next auto fetch for 8/17/2025, 5:00:00 AM Eastern Time (1250 minutes from now)
+[2025-08-16T12:09:58.992Z] Server startup - Memory: RSS=60MB, Heap=14/21MB, External=3MB
+[2025-08-16T12:11:14.673Z] Automated data fetch started
+[2025-08-16T12:11:14.674Z] Auto fetch started - Memory: RSS=56MB, Heap=13/15MB, External=3MB
+[2025-08-16T12:11:14.675Z] Fetching data from 2025-06-12 to 2025-08-15
+[2025-08-16T12:11:14.940Z] Starting SimpleSub web scraping...
+[2025-08-16T12:11:14.941Z] Before Puppeteer launch - Memory: RSS=67MB, Heap=20/24MB, External=3MB
+[2025-08-16T12:11:15.403Z] After Puppeteer launch - Memory: RSS=68MB, Heap=20/29MB, External=3MB
+[2025-08-16T12:11:40.685Z] Before processing Barnett - Memory: RSS=72MB, Heap=21/30MB, External=3MB
+[2025-08-16T12:12:03.401Z] After processing Barnett - Memory: RSS=73MB, Heap=22/23MB, External=3MB
+[2025-08-16T12:12:03.402Z] Before processing 532 Barnett - Memory: RSS=73MB, Heap=22/23MB, External=3MB
+[2025-08-16T12:12:25.695Z] After processing 532 Barnett - Memory: RSS=73MB, Heap=23/25MB, External=3MB
+[2025-08-16T12:12:25.695Z] Before processing Champion - Memory: RSS=73MB, Heap=23/25MB, External=3MB
+[2025-08-16T12:12:47.959Z] After processing Champion - Memory: RSS=74MB, Heap=24/25MB, External=3MB
+[2025-08-16T12:12:47.960Z] Before processing Cushing - Memory: RSS=74MB, Heap=24/25MB, External=3MB
+[2025-08-16T12:13:10.347Z] After processing Cushing - Memory: RSS=74MB, Heap=25/26MB, External=3MB
+[2025-08-16T12:13:10.347Z] Successfully scraped water usage data for 65 days
+[2025-08-16T12:13:10.348Z] Cleaned up CSV file: 06_12_2025-08_14_2025_483-489_BARNETT_usage.csv
+[2025-08-16T12:13:10.348Z] Cleaned up CSV file: 06_12_2025-08_14_2025_532_BARNETT_usage.csv
+[2025-08-16T12:13:10.349Z] Cleaned up CSV file: 06_12_2025-08_14_2025_CHAMPION_usage.csv
+[2025-08-16T12:13:10.349Z] Cleaned up CSV file: 06_12_2025-08_14_2025_CUSHING_usage.csv
+[2025-08-16T12:13:10.349Z] Before browser cleanup - Memory: RSS=74MB, Heap=25/26MB, External=3MB
+[2025-08-16T12:13:10.554Z] After browser cleanup - Memory: RSS=74MB, Heap=25/28MB, External=3MB
+[2025-08-16T12:13:10.554Z] Successfully fetched data for 65 days
+[2025-08-16T12:13:24.181Z] Data stored in database successfully
+[2025-08-16T12:13:24.183Z] Old data cleanup completed
+[2025-08-16T12:13:24.183Z] Automated data fetch completed successfully
+[2025-08-16T12:13:24.184Z] Auto fetch completed - Memory: RSS=76MB, Heap=25/27MB, External=3MB
+[2025-08-16T12:13:24.191Z] After garbage collection - Memory: RSS=76MB, Heap=20/27MB, External=3MB
