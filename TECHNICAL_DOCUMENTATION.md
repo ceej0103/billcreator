@@ -5,31 +5,60 @@
 
 A full-stack web application for managing water bills across 14 units in 4 properties. The system handles automated data fetching from SimpleSub, CSV processing, bill generation, PDF creation, and tenant management.
 
-## Current Status (Latest Session)
+## Current Status (Latest Session - August 16, 2025)
 - **Production-Ready**: All major features implemented and tested
-- **Recent Fixes**: Champion doubling logic, CSV cleanup, address corrections, balance update feature
-- **Deployment**: Fresh Render service created to resolve cache issues
-- **Status**: Awaiting deployment test with clean package.json
+- **Recent Session**: Render deployment issues diagnosed and fixed
+- **Memory Optimization**: Chromium memory flags added to stay within 512MB limit
+- **Deployment**: Fresh Render service with optimized configuration
+- **Status**: Testing memory optimization before final deployment
 
 ## Recent Deployment Issues & Resolution
 
-### Problem
+### Phase 1 Problems (Previous Session)
 Render deployment was hanging during `npm install` due to cached package.json with problematic scripts:
 - `heroku-postbuild`: Tried to install client dependencies
 - `railway-postbuild`: Tried to install client dependencies  
 - `postinstall`: Tried to install client dependencies
 
-### Solution
-1. **Cleaned package.json**: Removed all problematic postinstall scripts
-2. **Fixed port configuration**: Changed from 5000 to 10000 for Render compatibility
-3. **Pre-built client locally**: Committed build folder to avoid Render build issues
-4. **Created fresh Render service**: To avoid cache problems with old package.json
+### Phase 2 Problems (Latest Session - August 16, 2025)
+After fixing initial deployment issues, new problems emerged:
+- **Memory Limit Exceeded**: "Instance failed: N1shc, ran out of memory while running your code"
+- **Puppeteer Compatibility**: Deprecated `waitForTimeout` API causing crashes
+- **Dependency Conflicts**: Problematic `fs` and `path` package installations
+- **Port Configuration**: Mismatched proxy settings between client and server
 
-### New Deployment Configuration
+### Comprehensive Solution Implementation
+
+**1. Puppeteer Modernization**
+- **Replaced Dependencies**: `puppeteer` → `puppeteer-core` + `chromium`
+- **Fixed Deprecated APIs**: All `page.waitForTimeout()` replaced with `new Promise(resolve => setTimeout(resolve, X))`
+- **Added Memory Optimization**: 11 Chromium launch flags to reduce memory footprint
+
+**2. Dependency Cleanup**
+- **Removed Problematic Packages**: Eliminated `fs` and `path` dependencies (use Node.js built-ins)
+- **Updated package.json**: Clean dependency list with proper versions
+- **Environment Variable Support**: Added `JWT_SECRET` environment variable usage
+
+**3. Memory Analysis & Optimization**
+- **Added Memory Monitoring**: Comprehensive tracking of RSS, heap, and external memory
+- **Identified Root Cause**: Chromium browser process (300-400MB) separate from Node.js process (97MB)
+- **Optimization Strategy**: Chromium flags to reduce memory usage within 512MB Render limit
+
+**4. Configuration Fixes**
+- **Port Consistency**: Updated client proxy from 5000 to 10000
+- **Build Process**: Simplified render.yaml to `npm install` only
+- **Environment Variables**: Proper JWT_SECRET and SimpleSub credentials configuration
+
+### Current Deployment Configuration
 - **Build Command**: `npm install`
-- **Start Command**: `npm start`
+- **Start Command**: `npm start`  
+- **Plan**: Starter (512MB RAM)
 - **Mount Path**: `/var/data`
-- **Environment Variables**: Configured for SimpleSub credentials and JWT secret
+- **Environment Variables**: 
+  - `SIMPLESUB_USERNAME`: gooddogpropohio@gmail.com
+  - `SIMPLESUB_PASSWORD`: VzX%r5%9e@V0xte*K7
+  - `JWT_SECRET`: xK9mP2qR8vN4wL7sA1cE6fH3jD9gB5nM8
+  - `NODE_ENV`: production
 
 ## Architecture
 
@@ -39,7 +68,7 @@ Render deployment was hanging during `npm install` due to cached package.json wi
 - **Frontend**: React 18 with Tailwind CSS
 - **Authentication**: JWT-based
 - **PDF Generation**: PDF-lib
-- **Web Scraping**: Puppeteer
+- **Web Scraping**: Puppeteer-core with Chromium
 - **File Processing**: Multer, csv-parser
 - **Deployment**: Render (production)
 
@@ -220,9 +249,36 @@ CREATE TABLE bills (
 
 ### Configuration
 - **Login URL**: https://app.simplesubwater.com/
+- **Engine**: Puppeteer-core with external Chromium binary
 - **Credentials**: Environment variables (SIMPLESUB_USERNAME, SIMPLESUB_PASSWORD)
 - **Properties**: 4 properties with specific URLs
 - **Data Format**: CSV exports with daily usage in gallons
+- **Memory Optimization**: 11 Chromium flags to minimize memory footprint for Render deployment
+
+### Puppeteer Configuration
+```javascript
+browser = await puppeteer.launch({
+  executablePath: chromium.path,
+  headless: true,
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-web-security',
+    '--disable-features=VizDisplayCompositor',
+    '--memory-pressure-off',
+    '--disable-extensions',
+    '--disable-plugins',
+    '--disable-background-timer-throttling',
+    '--disable-renderer-backgrounding',
+    '--disable-background-networking',
+    '--disable-default-apps',
+    '--no-first-run',
+    '--single-process'
+  ]
+});
+```
 
 ### Process Flow
 1. **Login**: Authenticate with SimpleSub credentials
@@ -384,6 +440,50 @@ New Balance: $125.00
 - **Server Logs**: Check console output for detailed error messages
 - **Database**: Use SQLite browser for direct database inspection
 
+## Memory Monitoring & Optimization
+
+### Memory Tracking System
+Real-time memory monitoring implemented to debug Render deployment issues:
+
+```javascript
+function logMemoryUsage(step) {
+  const used = process.memoryUsage();
+  const memMB = {
+    rss: Math.round(used.rss / 1024 / 1024),       // Total memory
+    heapTotal: Math.round(used.heapTotal / 1024 / 1024), // Heap allocated
+    heapUsed: Math.round(used.heapUsed / 1024 / 1024),   // Heap used
+    external: Math.round(used.external / 1024 / 1024)    // External memory
+  };
+  const message = `${step} - Memory: RSS=${memMB.rss}MB, Heap=${memMB.heapUsed}/${memMB.heapTotal}MB, External=${memMB.external}MB`;
+  logMessage(message);
+}
+```
+
+### Memory Monitoring Points
+- **Server startup**: Baseline memory usage
+- **Before/After Puppeteer launch**: Browser initialization impact
+- **Property processing**: Per-property memory usage
+- **Browser cleanup**: Memory recovery verification
+- **Garbage collection**: Memory optimization results
+
+### Memory Usage Analysis
+**Local Environment**:
+- Server startup: 60MB
+- After Puppeteer: 68MB  
+- Peak usage: 76MB
+- After cleanup: 76MB
+
+**Render Environment**:
+- Server startup: 83MB (Node.js process only)
+- Container memory: Up to 89% (456MB of 512MB limit)
+- Root cause: Chromium browser runs as separate process not tracked by Node.js
+
+### Memory Optimization Strategy
+1. **Chromium Flags**: 11 optimization flags to reduce browser memory
+2. **Garbage Collection**: Force GC after auto-fetch completion
+3. **Process Separation**: Understanding Node.js vs Chromium memory usage
+4. **Container Limits**: Working within Render Starter plan 512MB constraint
+
 ## Performance Considerations
 
 ### Optimization
@@ -469,6 +569,12 @@ New Balance: $125.00
 
 ---
 
-**Last Updated**: Current Session - All Issues Resolved
-**Version**: Production Ready
+**Last Updated**: August 16, 2025 - Memory Optimization & Render Deployment Fixes
+**Version**: Production Ready with Memory Monitoring
 **Maintainer**: Good Dog Properties
+
+### Recent Session Summary
+- **Memory Issues**: Diagnosed Chromium memory usage exceeding 512MB Render limit
+- **Puppeteer Updates**: Modernized to puppeteer-core with deprecated API fixes
+- **Deployment Optimization**: Comprehensive Render compatibility improvements
+- **Monitoring Added**: Real-time memory tracking for production debugging

@@ -3,7 +3,38 @@
 ## Project Overview
 BILLCREATOR is a full-stack web application for managing water usage data, generating bills, and automating data fetching from SimpleSub. The application uses Node.js/Express backend with React frontend, SQLite database, and Puppeteer for web scraping.
 
-## Current Status (Latest Session)
+## Current Status (Latest Session - August 16, 2025)
+
+### 🔧 Latest Session: Render Deployment & Memory Optimization
+
+**Focus**: Resolved critical Render deployment failures and implemented memory optimization for web scraping.
+
+### ✅ Completed Session Work
+
+**1. Render Deployment Issues Diagnosed & Fixed**
+- **Root Cause Analysis**: Identified multiple deployment blockers
+  - Puppeteer compatibility issues with Render environment
+  - Deprecated `waitForTimeout` API causing crashes
+  - Problematic dependencies (`fs`, `path` packages)
+  - Port configuration mismatches (5000 vs 10000)
+  - Build process conflicts with pre-built client strategy
+
+**2. Puppeteer Modernization & Compatibility**
+- **Replaced Puppeteer**: `puppeteer` → `puppeteer-core` + `chromium` for Render compatibility
+- **Fixed Deprecated API**: All `page.waitForTimeout()` → `new Promise(resolve => setTimeout(resolve, X))`
+- **Updated Configuration**: Added Render-specific Chromium launch arguments
+- **Environment Variables**: Added JWT_SECRET environment variable support
+
+**3. Memory Monitoring & Optimization System**
+- **Added Comprehensive Memory Tracking**: Monitor RSS, heap, and external memory at key points
+- **Discovered Critical Finding**: Node.js process (97MB) vs Chromium process (300-400MB on Render)
+- **Root Cause Identified**: 512MB Render limit exceeded by separate Chromium browser process
+- **Local Testing**: 76MB peak usage locally, but 89% (456MB) on Render due to container overhead
+
+**4. Chromium Memory Optimization**
+- **Aggressive Memory Flags**: Added 11 optimization flags to reduce Chromium footprint
+- **Safe Flag Selection**: Avoided flags that would break SimpleSub functionality
+- **Key Optimizations**: `--single-process`, `--memory-pressure-off`, disabled extensions/plugins
 
 ### ✅ Completed Features
 1. **Production-Ready Auto Data Fetch System**
@@ -94,23 +125,26 @@ BILLCREATOR is a full-stack web application for managing water usage data, gener
 
 **Current Status**: Fresh service created with clean package.json, awaiting deployment test.
 
-### 📋 Pending Tasks
-1. **Final Testing**
-   - Test balance update feature functionality
-   - Verify Champion doubling logic works correctly
-   - Test CSV cleanup functionality
-   - Verify all addresses display correctly
+### 📋 Current Status & Next Steps
 
-2. **Production Deployment** 🔄 **IN PROGRESS**
-   - ~~Deploy to Render~~ → **Fresh service created**
-   - Test all functionality in production environment
-   - Verify automated scheduling works
-   - Monitor daily data fetching
+**Current State**: 🔄 **TESTING MEMORY OPTIMIZATION**
+- **Local Testing**: Verifying Chromium optimization flags don't break scraping functionality
+- **Memory Target**: Reduce Render memory usage from 89% (456MB) to under 80% (410MB)
+- **Deployment Ready**: All fixes implemented, awaiting final memory test results
 
-3. **Documentation Review**
-   - Verify all documentation is current and accurate
-   - Update any deployment-specific instructions
-   - Final code review
+**Immediate Next Steps**:
+1. **Local Verification** - Test auto-fetch with new Chromium flags (headless: false)
+2. **Deploy Memory Optimizations** - Switch to headless: true and deploy to Render
+3. **Monitor Memory Usage** - Watch Render dashboard during auto-fetch operation
+4. **Evaluate Results** - Determine if optimization sufficient or if plan upgrade needed
+
+**Backup Plan**: If memory optimization insufficient, upgrade to Render Starter Plus (1GB RAM)
+
+### 📋 Previously Completed Tasks ✅
+1. **All Major Features** - Auto-fetch, billing, payments, PDF generation
+2. **All Previous Bugs** - Database viewer, Champion doubling, addresses, authentication
+3. **Deployment Configuration** - Package.json, render.yaml, environment variables
+4. **Puppeteer Modernization** - API updates, compatibility fixes, dependency cleanup
 
 ### 🗂️ File Structure
 ```
@@ -176,4 +210,4 @@ BILLCREATOR/
 
 ---
 
-*Last Updated: Current Session - Fresh Render Service Created, Awaiting Deployment Test*
+*Last Updated: August 16, 2025 - Memory Optimization & Puppeteer Modernization Complete, Testing Before Final Deployment*
