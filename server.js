@@ -908,7 +908,17 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
          '--disable-dev-shm-usage',
          '--disable-gpu',
          '--disable-web-security',
-         '--disable-features=VizDisplayCompositor'
+         '--disable-features=VizDisplayCompositor',
+         '--memory-pressure-off',
+         '--max_old_space_size=256',
+         '--disable-extensions',
+         '--disable-plugins',
+         '--disable-images',
+         '--disable-background-timer-throttling',
+         '--disable-renderer-backgrounding',
+         '--disable-background-networking',
+         '--disable-default-apps',
+         '--no-first-run'
        ]
      });
     
