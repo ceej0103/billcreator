@@ -992,7 +992,13 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
          '--disable-background-networking',
          '--disable-default-apps',
          '--no-first-run',
-         '--single-process'
+         '--single-process',
+         '--max_old_space_size=128',
+         '--disable-dev-shm-usage',
+         '--disable-software-rasterizer',
+         '--disable-background-tasks',
+         '--disable-features=TranslateUI',
+         '--disable-ipc-flooding-protection'
        ]
      });
     
