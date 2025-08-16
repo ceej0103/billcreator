@@ -257,8 +257,13 @@ app.get('/api/verify-token', (req, res) => {
   res.json({ valid: true });
 });
 
-// Database setup
-const db = new sqlite3.Database('./bills.db');
+// Database setup - use persistent disk if available, fallback to local
+const dbPath = process.env.NODE_ENV === 'production' && fs.existsSync('/var/data') 
+  ? '/var/data/bills.db' 
+  : './bills.db';
+
+console.log(`📦 Using database at: ${dbPath}`);
+const db = new sqlite3.Database(dbPath);
 
 // Initialize database tables
 db.serialize(() => {
@@ -1462,24 +1467,41 @@ async function storeWaterUsageData(usageData) {
 
  // Get water usage data for database viewer (most recent 65 days with data)
  app.get('/api/water-usage-viewer', (req, res) => {
-   // First, find the most recent date that has data
-   db.get(`SELECT MAX(date) as maxDate FROM water_usage`, (err, result) => {
-     if (err) {
-       res.status(500).json({ error: err.message });
+   // DEBUG: Check total data count first
+   db.get(`SELECT COUNT(*) as totalCount FROM water_usage`, (countErr, countResult) => {
+     if (countErr) {
+       console.error('Error counting water usage records:', countErr);
+       res.status(500).json({ error: countErr.message });
        return;
      }
      
-
+     console.log(`🔍 DEBUG: Total water usage records in database: ${countResult?.totalCount || 0}`);
      
-     if (!result || !result.maxDate) {
-       // No data in database
-       res.json({
-         dates: [],
-         units: [],
-         dataMatrix: {}
-       });
-       return;
-     }
+     // Get sample of recent records for debugging
+     db.all(`SELECT date, unit_id, gallons FROM water_usage ORDER BY date DESC LIMIT 5`, (sampleErr, sampleRows) => {
+       if (!sampleErr) {
+         console.log('🔍 DEBUG: Sample recent records:', sampleRows);
+       }
+       
+       // Original query
+       db.get(`SELECT MAX(date) as maxDate FROM water_usage`, (err, result) => {
+         if (err) {
+           res.status(500).json({ error: err.message });
+           return;
+         }
+         
+         console.log('🔍 DEBUG: MAX(date) query result:', result);
+         
+         if (!result || !result.maxDate) {
+           // No data in database
+           console.log('🔍 DEBUG: No maxDate found, returning empty result');
+           res.json({
+             dates: [],
+             units: [],
+             dataMatrix: {}
+           });
+           return;
+         }
      
      // Calculate date range: most recent date with data, going back 65 days
      const endDate = new Date(result.maxDate);
