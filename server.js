@@ -41,9 +41,37 @@ function logMemoryUsage(step) {
     heapUsed: Math.round(used.heapUsed / 1024 / 1024),   // Heap used
     external: Math.round(used.external / 1024 / 1024)    // External memory
   };
-  const message = `${step} - Memory: RSS=${memMB.rss}MB, Heap=${memMB.heapUsed}/${memMB.heapTotal}MB, External=${memMB.external}MB`;
-  logMessage(message);
-  console.log(`🧠 ${message}`);
+  
+  // Get system-wide memory usage
+  try {
+    const { execSync } = require('child_process');
+    
+    // Get total container memory info
+    const memInfo = execSync('cat /proc/meminfo', { encoding: 'utf8' });
+    const totalMatch = memInfo.match(/MemTotal:\s+(\d+)\s+kB/);
+    const availableMatch = memInfo.match(/MemAvailable:\s+(\d+)\s+kB/);
+    
+    if (totalMatch && availableMatch) {
+      const totalMB = Math.round(parseInt(totalMatch[1]) / 1024);
+      const availableMB = Math.round(parseInt(availableMatch[1]) / 1024);
+      const usedMB = totalMB - availableMB;
+      const usedPercent = Math.round((usedMB / totalMB) * 100);
+      
+      const message = `${step} - Node: RSS=${memMB.rss}MB, Heap=${memMB.heapUsed}/${memMB.heapTotal}MB | Container: ${usedMB}MB/${totalMB}MB (${usedPercent}%)`;
+      logMessage(message);
+      console.log(`🧠 ${message}`);
+    } else {
+      // Fallback to Node.js only if system info unavailable
+      const message = `${step} - Memory: RSS=${memMB.rss}MB, Heap=${memMB.heapUsed}/${memMB.heapTotal}MB, External=${memMB.external}MB`;
+      logMessage(message);
+      console.log(`🧠 ${message}`);
+    }
+  } catch (error) {
+    // Fallback to Node.js only if system commands fail
+    const message = `${step} - Memory: RSS=${memMB.rss}MB, Heap=${memMB.heapUsed}/${memMB.heapTotal}MB, External=${memMB.external}MB`;
+    logMessage(message);
+    console.log(`🧠 ${message}`);
+  }
 }
 
 function cleanupOldLogs() {
@@ -1147,6 +1175,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
         
         // Wait for download to start
         await new Promise(resolve => setTimeout(resolve, 5000));
+        logMemoryUsage(`After clicking export for ${propertyName}`);
         
                           // Look for the most recent CSV file in downloads
          const files = fs.readdirSync(downloadsPath).filter(file => file.endsWith('.csv'));
@@ -1250,6 +1279,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
 
           
           console.log(`Successfully processed data for ${propertyName}`);
+          logMemoryUsage(`After CSV processing for ${propertyName}`);
         } else {
           console.warn(`No CSV file found for ${propertyName}`);
         }
