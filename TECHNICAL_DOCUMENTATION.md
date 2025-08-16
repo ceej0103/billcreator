@@ -7,10 +7,11 @@ A full-stack web application for managing water bills across 14 units in 4 prope
 
 ## Current Status (Latest Session - August 16, 2025)
 - **Production-Ready**: All major features implemented and tested
-- **Recent Session**: Render deployment issues diagnosed and fixed
-- **Memory Optimization**: Chromium memory flags added to stay within 512MB limit
-- **Deployment**: Fresh Render service with optimized configuration
-- **Status**: Testing memory optimization before final deployment
+- **Recent Session**: Critical syntax error resolved, deployment issues fixed
+- **Database Persistence**: Configured to use `/var/data/bills.db` on Render persistent disk
+- **Memory Monitoring**: Enhanced system tracks both Node.js and container memory usage
+- **Deployment**: Server starts successfully, ready for production testing
+- **Status**: Database will persist between deployments, memory usage ~511MB (functional)
 
 ## Recent Deployment Issues & Resolution
 
@@ -26,6 +27,13 @@ After fixing initial deployment issues, new problems emerged:
 - **Puppeteer Compatibility**: Deprecated `waitForTimeout` API causing crashes
 - **Dependency Conflicts**: Problematic `fs` and `path` package installations
 - **Port Configuration**: Mismatched proxy settings between client and server
+
+### Phase 3 Problems (Critical Syntax Error)
+After implementing memory optimization with browser restart logic:
+- **Syntax Error**: "SyntaxError: Unexpected end of input" at line 1901 in server.js
+- **Server Startup Failure**: Node.js could not parse the server.js file due to malformed code
+- **Root Cause**: Complex browser restart logic had missing closing braces or syntax issues
+- **Impact**: Complete deployment failure despite successful npm install and build
 
 ### Comprehensive Solution Implementation
 
@@ -49,11 +57,24 @@ After fixing initial deployment issues, new problems emerged:
 - **Build Process**: Simplified render.yaml to `npm install` only
 - **Environment Variables**: Proper JWT_SECRET and SimpleSub credentials configuration
 
+**5. Database Persistence Implementation**
+- **Database Path**: Modified to use `/var/data/bills.db` on Render persistent disk
+- **Fallback Logic**: Local `./bills.db` for development, persistent disk for production
+- **Data Retention**: Ensures database persists between deployments
+
+**6. Critical Syntax Error Resolution**
+- **Error Identification**: Found malformed code at line 1901 causing "Unexpected end of input"
+- **Root Cause**: Complex browser restart logic had syntax errors (missing braces)
+- **Solution**: Reverted to simpler browser handling while preserving all critical fixes
+- **Result**: Server now starts successfully while maintaining database persistence and memory monitoring
+
 ### Current Deployment Configuration
 - **Build Command**: `npm install`
 - **Start Command**: `npm start`  
 - **Plan**: Starter (512MB RAM)
-- **Mount Path**: `/var/data`
+- **Persistent Disk**: `/var/data` (for database persistence)
+- **Database Location**: `/var/data/bills.db` (production) or `./bills.db` (development)
+- **Memory Usage**: ~511MB at peak (within 512MB limit)
 - **Environment Variables**: 
   - `SIMPLESUB_USERNAME`: gooddogpropohio@gmail.com
   - `SIMPLESUB_PASSWORD`: VzX%r5%9e@V0xte*K7
@@ -93,6 +114,35 @@ After fixing initial deployment issues, new problems emerged:
                        │ - CSV Downloads │
                        └─────────────────┘
 ```
+
+## Database Configuration & Persistence
+
+### Database Location Logic
+The application uses SQLite with automatic path selection based on environment:
+
+```javascript
+// Database setup - use persistent disk if available, fallback to local
+const dbPath = process.env.NODE_ENV === 'production' && fs.existsSync('/var/data') 
+  ? '/var/data/bills.db' 
+  : './bills.db';
+
+console.log(`📦 Using database at: ${dbPath}`);
+const db = new sqlite3.Database(dbPath);
+```
+
+### Environment-Specific Paths
+- **Development**: `./bills.db` (local project directory)
+- **Production (Render)**: `/var/data/bills.db` (persistent disk)
+
+### Persistence Benefits
+- **Data Retention**: Database survives deployments and server restarts
+- **Backup Protection**: Persistent disk provides better data protection than temporary container storage
+- **Performance**: Consistent database location improves reliability
+
+### Render Persistent Disk Configuration
+- **Mount Path**: `/var/data`
+- **Disk Size**: Configurable (default sufficient for SQLite database)
+- **Access**: Read/write permissions for application
 
 ## Database Schema
 
@@ -443,7 +493,7 @@ New Balance: $125.00
 ## Memory Monitoring & Optimization
 
 ### Memory Tracking System
-Real-time memory monitoring implemented to debug Render deployment issues:
+Comprehensive memory monitoring implemented to debug Render deployment issues:
 
 ```javascript
 function logMemoryUsage(step) {
@@ -454,7 +504,25 @@ function logMemoryUsage(step) {
     heapUsed: Math.round(used.heapUsed / 1024 / 1024),   // Heap used
     external: Math.round(used.external / 1024 / 1024)    // External memory
   };
-  const message = `${step} - Memory: RSS=${memMB.rss}MB, Heap=${memMB.heapUsed}/${memMB.heapTotal}MB, External=${memMB.external}MB`;
+  
+  // Try to get container-wide memory usage from cgroup files
+  try {
+    // Check cgroup v1 paths
+    const memLimit = execSync('cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null', { encoding: 'utf8' });
+    const memUsage = execSync('cat /sys/fs/cgroup/memory/memory.usage_in_bytes 2>/dev/null', { encoding: 'utf8' });
+    
+    if (memLimit && memUsage) {
+      const limitMB = Math.round(parseInt(memLimit) / 1024 / 1024);
+      const usageMB = Math.round(parseInt(memUsage) / 1024 / 1024);
+      const usedPercent = Math.round((usageMB / limitMB) * 100);
+      containerMessage = ` | Container: ${usageMB}MB/${limitMB}MB (${usedPercent}%)`;
+    }
+    // Falls back to cgroup v2 paths or ps aux estimation if v1 unavailable
+  } catch (error) {
+    // Fallback to Node.js process memory only
+  }
+  
+  const message = `${step} - Node: RSS=${memMB.rss}MB, Heap=${memMB.heapUsed}/${memMB.heapTotal}MB${containerMessage}`;
   logMessage(message);
 }
 ```
@@ -569,12 +637,13 @@ function logMemoryUsage(step) {
 
 ---
 
-**Last Updated**: August 16, 2025 - Memory Optimization & Render Deployment Fixes
-**Version**: Production Ready with Memory Monitoring
+**Last Updated**: August 16, 2025 - Critical Syntax Error Resolved, Database Persistence Configured
+**Version**: Production Ready with Database Persistence and Memory Monitoring
 **Maintainer**: Good Dog Properties
 
 ### Recent Session Summary
-- **Memory Issues**: Diagnosed Chromium memory usage exceeding 512MB Render limit
-- **Puppeteer Updates**: Modernized to puppeteer-core with deprecated API fixes
-- **Deployment Optimization**: Comprehensive Render compatibility improvements
-- **Monitoring Added**: Real-time memory tracking for production debugging
+- **Critical Syntax Fix**: Resolved server startup failure caused by malformed browser restart logic
+- **Database Persistence**: Configured SQLite to use persistent disk `/var/data/bills.db` on Render
+- **Memory Monitoring**: Enhanced container-wide memory tracking using cgroup files
+- **Deployment Ready**: Server now starts successfully, database persists between deployments
+- **Memory Usage**: Peak ~511MB (within 512MB limit, functional but will monitor for optimization opportunities)
