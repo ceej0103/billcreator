@@ -15,7 +15,7 @@ const bcrypt = require('bcryptjs');
 // Now put your authentication constants here:
 const AUTH_USER = 'GDP';
 const AUTH_PASS_HASH = '$2b$10$eo0OFQFJm.f8XdC3xrqK5ehqqWd4NGEVE8nWCTlhS0CKSDrkASzLy';
-const JWT_SECRET = 'supersecretkey';
+const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey';
 
 // Logging functionality
 const logsDir = path.join(__dirname, 'logs');
