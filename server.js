@@ -837,7 +837,8 @@ app.post('/api/auto-fetch-data', async (req, res) => {
 
  // Function to fetch water usage from SimpleSub website using web scraping
  async function fetchWaterUsageFromProvider(startDate, endDate) {
-   const puppeteer = require('puppeteer');
+   const puppeteer = require('puppeteer-core');
+  const chromium = require('chromium');
    const fs = require('fs');
    const path = require('path');
    const csv = require('csv-parser');
@@ -877,8 +878,16 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
     
          // Launch browser with download configuration
      browser = await puppeteer.launch({
+       executablePath: chromium.path,
        headless: true,
-       args: ['--no-sandbox', '--disable-setuid-sandbox']
+       args: [
+         '--no-sandbox',
+         '--disable-setuid-sandbox',
+         '--disable-dev-shm-usage',
+         '--disable-gpu',
+         '--disable-web-security',
+         '--disable-features=VizDisplayCompositor'
+       ]
      });
     
          const page = await browser.newPage();
@@ -933,7 +942,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
      
      // Add a 20-second delay after login to ensure everything is loaded
      console.log('Waiting 20 seconds for page to fully load...');
-     await page.waitForTimeout(20000);
+     await new Promise(resolve => setTimeout(resolve, 20000));
     
     // Process each property
     for (const [propertyName, propertyUrl] of Object.entries(propertyUrls)) {
@@ -944,7 +953,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
         await page.goto(propertyUrl, { waitUntil: 'networkidle2' });
         
         // Wait for page to load
-        await page.waitForTimeout(3000);
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Look for and click the "Usage" tab
         console.log(`Looking for Usage tab for ${propertyName}...`);
@@ -995,7 +1004,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
         }
         
         // Wait for usage page to load
-        await page.waitForTimeout(3000);
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Look for date picker and set date range
         console.log(`Setting date range for ${propertyName}...`);
@@ -1004,7 +1013,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
         console.log(`Looking for date picker inputs for ${propertyName}...`);
         
         // Wait for the date picker to be visible
-        await page.waitForTimeout(2000);
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Try to find the date range picker inputs
         let startDateInput, endDateInput;
@@ -1032,14 +1041,14 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
              console.log(`Set date range for ${propertyName}: ${formattedStartDate} to ${formattedEndDate}`);
             
                          // Wait a moment for the date picker to update
-             await page.waitForTimeout(2000);
+             await new Promise(resolve => setTimeout(resolve, 2000));
              
              // Press Enter to confirm the date selection and close the picker
              await page.keyboard.press('Enter');
              console.log(`Pressed Enter to confirm date selection for ${propertyName}`);
              
              // Wait 3 seconds for the chart to populate with the new date range
-             await page.waitForTimeout(3000);
+             await new Promise(resolve => setTimeout(resolve, 3000));
           } else {
             console.warn(`Could not find date range inputs for ${propertyName}`);
           }
@@ -1051,7 +1060,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
         console.log(`Looking for Export button for ${propertyName}...`);
         
         // Wait for the export button to be visible
-        await page.waitForTimeout(2000);
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         let exportButtonFound = false;
         
@@ -1104,7 +1113,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
         }
         
         // Wait for download to start
-        await page.waitForTimeout(5000);
+        await new Promise(resolve => setTimeout(resolve, 5000));
         
                           // Look for the most recent CSV file in downloads
          const files = fs.readdirSync(downloadsPath).filter(file => file.endsWith('.csv'));
@@ -1205,8 +1214,7 @@ const SIMPLESUB_PASSWORD = process.env.SIMPLESUB_PASSWORD || 'VzX%r5%9e@V0xte*K7
              }
            });
           
-                     // Keep the downloaded file for testing purposes
-           console.log(`Keeping downloaded file for testing: ${filePath}`);
+
           
           console.log(`Successfully processed data for ${propertyName}`);
         } else {

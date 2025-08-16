@@ -2,6 +2,6 @@ services:
   - type: web
     name: bill-creator
     env: node
-    buildCommand: chmod +x build-render.sh && ./build-render.sh
+    buildCommand: npm install
     startCommand: npm start
     plan: free 

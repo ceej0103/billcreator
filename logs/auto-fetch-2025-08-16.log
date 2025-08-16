@@ -1,0 +1,20 @@
+[2025-08-16T11:26:16.649Z] Scheduled next auto fetch for 8/17/2025, 5:00:00 AM Eastern Time (1294 minutes from now)
+[2025-08-16T11:32:37.501Z] Scheduled next auto fetch for 8/17/2025, 5:00:00 AM Eastern Time (1287 minutes from now)
+[2025-08-16T11:33:33.705Z] Automated data fetch started
+[2025-08-16T11:33:33.706Z] Fetching data from 2025-06-12 to 2025-08-15
+[2025-08-16T11:33:33.958Z] Starting SimpleSub web scraping...
+[2025-08-16T11:33:45.305Z] Auto fetch error: Failed to scrape water usage data: page.waitForTimeout is not a function
+[2025-08-16T11:37:00.391Z] Scheduled next auto fetch for 8/17/2025, 5:00:00 AM Eastern Time (1283 minutes from now)
+[2025-08-16T11:37:08.600Z] Automated data fetch started
+[2025-08-16T11:37:08.601Z] Fetching data from 2025-06-12 to 2025-08-15
+[2025-08-16T11:37:08.844Z] Starting SimpleSub web scraping...
+[2025-08-16T11:39:02.325Z] Successfully scraped water usage data for 65 days
+[2025-08-16T11:39:02.326Z] Cleaned up CSV file: 06_12_2025-08_14_2025_483-489_BARNETT_usage.csv
+[2025-08-16T11:39:02.326Z] Cleaned up CSV file: 06_12_2025-08_14_2025_532_BARNETT_usage.csv
+[2025-08-16T11:39:02.326Z] Cleaned up CSV file: 06_12_2025-08_14_2025_CHAMPION_usage.csv
+[2025-08-16T11:39:02.327Z] Cleaned up CSV file: 06_12_2025-08_14_2025_CUSHING_usage.csv
+[2025-08-16T11:39:02.575Z] Successfully fetched data for 65 days
+[2025-08-16T11:39:16.147Z] Data stored in database successfully
+[2025-08-16T11:39:16.161Z] Old data cleanup completed
+[2025-08-16T11:39:16.162Z] Automated data fetch completed successfully
+[2025-08-16T11:41:33.352Z] Scheduled next auto fetch for 8/17/2025, 5:00:00 AM Eastern Time (1278 minutes from now)

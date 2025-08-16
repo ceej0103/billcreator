@@ -8,7 +8,28 @@ A full-stack web application for managing water bills across 14 units in 4 prope
 ## Current Status (Latest Session)
 - **Production-Ready**: All major features implemented and tested
 - **Recent Fixes**: Champion doubling logic, CSV cleanup, address corrections, balance update feature
-- **Ready for Deployment**: System is fully functional and ready for production use
+- **Deployment**: Fresh Render service created to resolve cache issues
+- **Status**: Awaiting deployment test with clean package.json
+
+## Recent Deployment Issues & Resolution
+
+### Problem
+Render deployment was hanging during `npm install` due to cached package.json with problematic scripts:
+- `heroku-postbuild`: Tried to install client dependencies
+- `railway-postbuild`: Tried to install client dependencies  
+- `postinstall`: Tried to install client dependencies
+
+### Solution
+1. **Cleaned package.json**: Removed all problematic postinstall scripts
+2. **Fixed port configuration**: Changed from 5000 to 10000 for Render compatibility
+3. **Pre-built client locally**: Committed build folder to avoid Render build issues
+4. **Created fresh Render service**: To avoid cache problems with old package.json
+
+### New Deployment Configuration
+- **Build Command**: `npm install`
+- **Start Command**: `npm start`
+- **Mount Path**: `/var/data`
+- **Environment Variables**: Configured for SimpleSub credentials and JWT secret
 
 ## Architecture
 
